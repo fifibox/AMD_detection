@@ -86,7 +86,19 @@ class DICOMDataset(Dataset):
 
 from torchvision import transforms
 
-transform = transforms.Compose([
+train_transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.RandomHorizontalFlip(),
+    transforms.RandomVerticalFlip(),
+    transforms.RandomRotation(15),
+    transforms.ColorJitter(brightness=0.2, contrast=0.2),
+    transforms.RandomAffine(degrees=0, translate=(0.05, 0.05)),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                         std=[0.229, 0.224, 0.225])
+])
+
+val_transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
     transforms.Normalize(
@@ -95,9 +107,9 @@ transform = transforms.Compose([
     )
 ])
 
-train_dataset = DICOMDataset("full_dataset/train", transform=transform)
-val_dataset = DICOMDataset("full_dataset/val", transform=transform)
-test_dataset = DICOMDataset("full_dataset/test", transform=transform)
+train_dataset = DICOMDataset("balanced_binary_dataset/train", transform=train_transform)
+val_dataset = DICOMDataset("balanced_binary_dataset/val", transform=val_transform)
+test_dataset = DICOMDataset("balanced_binary_dataset/test", transform=val_transform)
 
 print("\nClasses:", train_dataset.class_names)
 print("Class to index:", train_dataset.class_to_idx)
@@ -262,23 +274,23 @@ for epoch in range(num_epochs):
         print(f"Best model saved to {best_model_path}")
 
 
-    epochs = list(range(1, num_epochs + 1))
-    plt.figure(figsize=(8, 5))
-    plt.plot(epochs, train_acc_history, marker="o", linewidth=2, label="Train Accuracy")
-    plt.plot(epochs, val_acc_history, marker="s", linewidth=2, label="Validation Accuracy")
-    plt.xlabel("Epoch")
-    plt.ylabel("Accuracy")
-    plt.title("Training vs Validation Accuracy")
-    plt.xticks(epochs)
-    plt.ylim(0, 1.0)
-    plt.grid(True, linestyle="--", alpha=0.4)
-    plt.legend()
-    plt.tight_layout()
+epochs = list(range(1, len(train_acc_history) + 1))
+plt.figure(figsize=(8, 5))
+plt.plot(epochs, train_acc_history, marker="o", linewidth=2, label="Train Accuracy")
+plt.plot(epochs, val_acc_history, marker="s", linewidth=2, label="Validation Accuracy")
+plt.xlabel("Epoch")
+plt.ylabel("Accuracy")
+plt.title("Training vs Validation Accuracy with data_augmentation")
+plt.xticks(epochs)
+plt.ylim(0, 1.0)
+plt.grid(True, linestyle="--", alpha=0.4)
+plt.legend()
+plt.tight_layout()
 
-    accuracy_plot_path = "training_validation_accuracy.png"
-    plt.savefig(accuracy_plot_path, dpi=200)
-    plt.close()
-    print(f"Saved accuracy plot to {accuracy_plot_path}")
+accuracy_plot_path = "training_validation_accuracy_data_augmentation.png"
+plt.savefig(accuracy_plot_path, dpi=200)
+plt.close()
+print(f"Saved accuracy plot to {accuracy_plot_path}")
 
 
 # =========================================================
