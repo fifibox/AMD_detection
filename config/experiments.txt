@@ -1,0 +1,48 @@
+# task arch strategy k seed [tag_suffix extra_train_cv_args...]   (one line = one SLURM array task, 0-indexed)
+# Final thesis runs use seed 43 only (29 lines: 0-28).
+# Run one line: sbatch --array=11 slurm/job.slurm   (line 11 = four_class, "4 -> 2" referable fusion)
+binary retfound lp 0 43
+binary retfound partial 4 43
+binary retfound partial 12 43
+binary retfound full 0 43
+binary resnet18 full 0 43
+binary efficientnet_b0 full 0 43
+binary deit_tiny_patch16_224 full 0 43
+three_class retfound full 0 43
+three_class resnet18 full 0 43
+three_class efficientnet_b0 full 0 43
+three_class deit_tiny_patch16_224 full 0 43
+four_class retfound full 0 43
+# Lines 12-17: baselines re-run with a conventional learning rate for small ImageNet
+# models (whole network 1e-3) and no early stopping before epoch 20:
+#   sbatch --array=12-17 slurm/job.slurm
+binary resnet18 full 0 43 lr1e-3 --backbone_lr 1e-3 --min_epochs 20
+binary efficientnet_b0 full 0 43 lr1e-3 --backbone_lr 1e-3 --min_epochs 20
+binary deit_tiny_patch16_224 full 0 43 lr1e-3 --backbone_lr 1e-3 --min_epochs 20
+three_class resnet18 full 0 43 lr1e-3 --backbone_lr 1e-3 --min_epochs 20
+three_class efficientnet_b0 full 0 43 lr1e-3 --backbone_lr 1e-3 --min_epochs 20
+three_class deit_tiny_patch16_224 full 0 43 lr1e-3 --backbone_lr 1e-3 --min_epochs 20
+# Lines 18-19: RETFound sensitivity run with the official RETFound fine-tuning recipe
+# (lr 3e-4 = blr 5e-3 x 16/256, layer-wise lr decay 0.65, no weight decay on biases/norms),
+# so RETFound, like the baselines, is tried at two optimiser settings.
+binary retfound full 0 43 lr3e-4_lld0.65 --backbone_lr 3e-4 --layer_decay 0.65
+three_class retfound full 0 43 lr3e-4_lld0.65 --backbone_lr 3e-4 --layer_decay 0.65
+# Line 20: faithful replication of the official RETFound fine-tuning code (main_finetune.py defaults,
+# batch 16): lr 3.125e-4 (= blr 5e-3 x 16/256), layer decay 0.65, 10 warm-up epochs, cosine to 1e-6,
+# no early stopping (all 50 epochs), checkpoint = best validation AUROC, RETFound augmentation
+# (RRC 0.08-1 + RandAugment m9 + random erasing 0.25; eval resize 256 + centre crop 224), smoothing 0.1.
+binary retfound full 0 43 official --backbone_lr 3.125e-4 --layer_decay 0.65 --warmup_epochs 10 --min_lr 1e-6 --patience 1000 --select_metric auroc --aug retfound
+# Lines 21-23: baselines trained with the same official-RETFound pipeline as line 20 (RETFound augmentation,
+# 10 warm-up epochs, cosine to 1e-6, no early stopping, best-val-AUROC checkpoint), each at its own best lr
+# from lines 4-6 / 12-14. Layer-wise lr decay is ViT-L/MAE-specific and is not used for the baselines.
+binary resnet18 full 0 43 official --backbone_lr 1e-3 --head_lr 1e-3 --warmup_epochs 10 --min_lr 1e-6 --patience 1000 --select_metric auroc --aug retfound
+binary efficientnet_b0 full 0 43 official --backbone_lr 1e-3 --head_lr 1e-3 --warmup_epochs 10 --min_lr 1e-6 --patience 1000 --select_metric auroc --aug retfound
+binary deit_tiny_patch16_224 full 0 43 official --backbone_lr 1e-4 --warmup_epochs 10 --min_lr 1e-6 --patience 1000 --select_metric auroc --aug retfound
+# Lines 24-28: official-RETFound pipeline (as line 20; for multiclass the checkpoint is chosen by validation
+# macro one-vs-rest AUROC, as in the RETFound code) on the three-class task (RETFound + the three baselines,
+# baselines at their own best lr, no layer decay) and on the four-class task (RETFound; scored as 4 -> 2).
+three_class retfound full 0 43 official --backbone_lr 3.125e-4 --layer_decay 0.65 --warmup_epochs 10 --min_lr 1e-6 --patience 1000 --select_metric auroc --aug retfound
+three_class resnet18 full 0 43 official --backbone_lr 1e-3 --head_lr 1e-3 --warmup_epochs 10 --min_lr 1e-6 --patience 1000 --select_metric auroc --aug retfound
+three_class efficientnet_b0 full 0 43 official --backbone_lr 1e-3 --head_lr 1e-3 --warmup_epochs 10 --min_lr 1e-6 --patience 1000 --select_metric auroc --aug retfound
+three_class deit_tiny_patch16_224 full 0 43 official --backbone_lr 1e-4 --warmup_epochs 10 --min_lr 1e-6 --patience 1000 --select_metric auroc --aug retfound
+four_class retfound full 0 43 official --backbone_lr 3.125e-4 --layer_decay 0.65 --warmup_epochs 10 --min_lr 1e-6 --patience 1000 --select_metric auroc --aug retfound
